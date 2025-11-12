@@ -1,0 +1,45 @@
+[2025-11-12 13:14:42] [INFO] [fashion_weeks] Visiting list page: https://www.modemonline.com/fashion/fashion-weeks/
+[2025-11-12 13:14:47] [INFO] [fashion_weeks] Found 21 event links
+[2025-11-12 13:14:47] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/digital/extra
+[2025-11-12 13:14:51] [INFO] [fashion_weeks] Skipped (not Asia/Europe): INTERNATIONAL SALES CAMPAIGNS SPRING SUMMER 26 (N/A)
+[2025-11-12 13:14:51] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/digital/extra/multilabel-showrooms
+[2025-11-12 13:15:03] [INFO] [fashion_weeks] Skipped (not Asia/Europe): Multi-Label Showrooms (N/A)
+[2025-11-12 13:15:03] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/digital/extra/designer-showrooms
+[2025-11-12 13:15:09] [INFO] [fashion_weeks] Skipped (not Asia/Europe): Brands Showrooms (N/A)
+[2025-11-12 13:15:09] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/digital/extra/tradeshows
+[2025-11-12 13:15:18] [INFO] [fashion_weeks] Skipped (not Asia/Europe): Trade shows (N/A)
+[2025-11-12 13:15:18] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/new-york/men-and-women
+[2025-11-12 13:15:22] [INFO] [fashion_weeks] Skipped (not Asia/Europe): New York Pre-Spring Market Week (USA)
+[2025-11-12 13:15:22] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/london/women
+[2025-11-12 13:15:25] [INFO] [fashion_weeks] Added: SS26 London Women's (London, United Kingdom)
+[2025-11-12 13:15:25] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/milan/men
+[2025-11-12 13:15:30] [INFO] [fashion_weeks] Added: SS26 Milan Men's (Milan, Italy)
+[2025-11-12 13:15:30] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/paris/men
+[2025-11-12 13:15:33] [INFO] [fashion_weeks] Added: SS26 Paris Men's (Paris, France)
+[2025-11-12 13:15:33] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/berlin/men-and-women
+[2025-11-12 13:15:36] [INFO] [fashion_weeks] Added: Berlin Fashion Week (Berlin, Germany)
+[2025-11-12 13:15:36] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/shanghai/resort
+[2025-11-12 13:15:38] [INFO] [fashion_weeks] Added: Shanghai Market Week (Shanghai, China)
+[2025-11-12 13:15:38] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/copenhagen/men-and-women
+[2025-11-12 13:15:42] [INFO] [fashion_weeks] Added: Copenhagen Fashion Week (Copenhagen, Denmark)
+[2025-11-12 13:15:42] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/tokyo/men-and-women
+[2025-11-12 13:15:45] [INFO] [fashion_weeks] Added: Rakuten Tokyo Fashion Week (Tokyo, Japan)
+[2025-11-12 13:15:45] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/seoul/men-and-women
+[2025-11-12 13:15:48] [INFO] [fashion_weeks] Added: Seoul Fashion Week (Seoul, South Korea)
+[2025-11-12 13:15:48] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/kiev/men-and-women
+[2025-11-12 13:15:51] [INFO] [fashion_weeks] Added: Ukrainian Fashion Week (Kiev, Ukraine)
+[2025-11-12 13:15:51] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/new-york/women
+[2025-11-12 13:16:00] [INFO] [fashion_weeks] Skipped (not Asia/Europe): SS26 New York Women's (USA)
+[2025-11-12 13:16:00] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/london/men-and-women
+[2025-11-12 13:16:04] [INFO] [fashion_weeks] Added: London Fashion Week (London, United Kingdom)
+[2025-11-12 13:16:04] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/milan/women
+[2025-11-12 13:16:06] [INFO] [fashion_weeks] Added: SS26 Milan Women's (Milan, Italy)
+[2025-11-12 13:16:06] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/paris/women
+[2025-11-12 13:16:09] [INFO] [fashion_weeks] Added: SS26 Paris Women's (Paris, France)
+[2025-11-12 13:16:09] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/lisbon/men-and-women
+[2025-11-12 13:16:12] [INFO] [fashion_weeks] Added: Lisboa Fashion Week (Lisbon, Portugal)
+[2025-11-12 13:16:12] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/shanghai/men-and-women
+[2025-11-12 13:16:16] [INFO] [fashion_weeks] Added: Shanghai Fashion Week (Shanghai, China)
+[2025-11-12 13:16:16] [INFO] [fashion_weeks] Visiting detail page: https://www.modemonline.com/fashion/fashion-weeks/spring-summer-2026/taipei/men-and-women
+[2025-11-12 13:16:19] [INFO] [fashion_weeks] Added: Taipei Fashion Week (Taipei, Taiwan)
+[2025-11-12 13:16:19] [INFO] [fashion_weeks] Saved 15 events to CSV
