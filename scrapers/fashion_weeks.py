@@ -27,6 +27,10 @@ class FashionWeeksScraper(BaseScraper):
     def scrape_list_page(self, page, url: str) -> List[Dict[str, Any]]:
         logger.info(f'Visiting list page: {url}')
         page.goto(url, timeout=settings.TIMEOUT * 1000)
+        
+        # Handle cookie consent if present
+        self.handle_cookie_consent(page)
+        
         page.wait_for_timeout(2000)
         
         # Extract event links with date context from the index page using DOM traversal
@@ -82,6 +86,10 @@ class FashionWeeksScraper(BaseScraper):
     def scrape_detail_page(self, page, url: str, event_hint: str = '', dates_hint: str = '') -> Dict[str, Any]:
         logger.info(f'Visiting detail page: {url}')
         page.goto(url, timeout=settings.TIMEOUT * 1000)
+        
+        # Handle cookie consent if present
+        self.handle_cookie_consent(page)
+        
         page.wait_for_timeout(1500)
         
         body_text = page.inner_text('body') if page.query_selector('body') else ''

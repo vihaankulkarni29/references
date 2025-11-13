@@ -36,6 +36,10 @@ class ShowroomsScraper(BaseScraper):
         """Scrape showroom entries from a showrooms listing page."""
         logger.info(f'Visiting showrooms list page: {url}')
         page.goto(url, timeout=settings.TIMEOUT * 1000)
+        
+        # Handle cookie consent if present
+        self.handle_cookie_consent(page)
+        
         page.wait_for_timeout(2000)
         
         # Extract city from URL for geographic context

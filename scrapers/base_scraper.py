@@ -83,6 +83,56 @@ class BaseScraper:
                 time.sleep(delay)
                 delay *= 2
 
+    def handle_cookie_consent(self, page: Page, timeout: int = 5000) -> bool:
+        """Detect and accept cookie consent dialogs (Cookiebot, OneTrust, etc.).
+        
+        Args:
+            page: Playwright Page instance
+            timeout: Milliseconds to wait for consent dialog (default 5000ms)
+            
+        Returns:
+            True if consent was handled, False if no dialog found
+        """
+        try:
+            # Common consent dialog selectors (in priority order)
+            consent_selectors = [
+                # Cookiebot
+                '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+                '#CybotCookiebotDialogBodyButtonAccept',
+                'a#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+                
+                # OneTrust
+                '#onetrust-accept-btn-handler',
+                'button#onetrust-accept-btn-handler',
+                
+                # Generic patterns
+                'button:has-text("Accept")',
+                'button:has-text("Accept All")',
+                'button:has-text("I Accept")',
+                'button:has-text("Agree")',
+                'button:has-text("Allow All")',
+                'a:has-text("Accept All Cookies")',
+            ]
+            
+            for selector in consent_selectors:
+                try:
+                    # Check if element exists and is visible
+                    element = page.locator(selector).first
+                    if element.is_visible(timeout=timeout):
+                        element.click()
+                        # Wait a moment for dialog to close
+                        time.sleep(0.5)
+                        return True
+                except Exception:
+                    # Try next selector
+                    continue
+            
+            return False
+        except Exception as e:
+            # Log but don't fail - consent handling is best-effort
+            print(f"[WARN] Cookie consent handling failed: {e}")
+            return False
+
     # ----------------
     # Orchestration
     # ----------------

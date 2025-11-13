@@ -18,7 +18,11 @@ class DesignerShowroomsScraper(BaseScraper):
         self.base_url = "https://www.modemonline.com/fashion/fashion-weeks"
         self.seasons = [
             "spring-summer-2026",
-            "fall-winter-2025-2026"
+            "fall-winter-2025-2026",
+            "spring-summer-2025",
+            "fall-winter-2024-2025",
+            "spring-summer-2024",
+            "fall-winter-2023-2024"
         ]
         
     def get_urls_to_scrape(self):
@@ -30,165 +34,171 @@ class DesignerShowroomsScraper(BaseScraper):
         return urls
     
     def scrape_showroom_page(self, url):
-        """Scrape a single designer showroom page"""
+        """Scrape a single designer showroom page using Playwright DOM selectors"""
         print(f"Scraping designer showroom page: {url}")
-        
         try:
             page = self.new_page()
-            page.goto(url, timeout=30000)
-            
-            # Wait for content
-            page.wait_for_selector('body', timeout=30000)
-            
-            # Get HTML content
-            html = page.content()
-            
-            # Extract showrooms
-            showrooms = self.extract_showrooms(html, url)
-            
-            print(f"Found {len(showrooms)} designer showrooms on {url}")
-            
+            page.goto(url, wait_until='networkidle', timeout=60000)
+
+            # Handle cookie consent if present
+            self.handle_cookie_consent(page)
+
+            # Small wait to allow dynamic content to render
+            time.sleep(5)
+
+            showrooms = []
+
+            # Find all "Mini Website" links (same pattern that worked for tradeshows)
+            mini_links = page.locator('a:has-text("Mini Website")').all()
+            print(f"Found {len(mini_links)} potential showroom entries")
+
+            for idx, link in enumerate(mini_links, 1):
+                try:
+                    parent = None
+                    # Try enclosing table row first
+                    try:
+                        tr = link.locator('xpath=ancestor::tr[1]')
+                        if tr.count() > 0:
+                            parent = tr
+                    except Exception:
+                        pass
+
+                    # Fallback to a nearby div container
+                    if not parent:
+                        try:
+                            div = link.locator('xpath=ancestor::div[contains(@class, "row") or contains(@class, "col")][1]')
+                            if div.count() > 0:
+                                parent = div
+                        except Exception:
+                            pass
+
+                    # Last resort: direct parent
+                    if not parent:
+                        parent = link.locator('xpath=..')
+
+                    text = parent.text_content() if parent else ''
+                    href = link.get_attribute('href')
+                    source_url = (
+                        f"https://www.modemonline.com{href}" if href and href.startswith('/') else (href or url)
+                    )
+
+                    if text and len(text) > 30:
+                        record = self.parse_showroom_text(text, source_url)
+                        if record:
+                            showrooms.append(record)
+                            if idx <= 3:
+                                # Print first few extracted for visibility
+                                print(f"  Extracted: {record.get('brand_name')} – {record.get('primary_city')} ({record.get('categories')})")
+                except Exception as e:
+                    if idx <= 3:
+                        print(f"  Warning: failed to parse entry #{idx}: {e}")
+                    continue
+
             page.close()
+            print(f"Found {len(showrooms)} designer showrooms on {url}")
             return showrooms
-            
+
         except Exception as e:
             print(f"Error scraping {url}: {str(e)}")
             return []
     
-    def extract_showrooms(self, html, source_url):
-        """Extract showroom data from HTML"""
-        showrooms = []
-        
-        # Pattern for brand name with Mini Website
-        name_pattern = r'\*\s*([A-Za-z0-9\s\[\]\'\-\&\.\/\(\)]+?)(?:M\'s|W\'s|M\'s/W\'s|\[)'
-        
-        # Split into blocks by list items
-        blocks = re.split(r'<li[^>]*>|</li>', html)
-        
-        for block in blocks:
-            if len(block) < 100:
-                continue
-                
-            try:
-                # Extract brand name
-                name_match = re.search(name_pattern, block)
-                if not name_match:
-                    # Try alternative pattern
-                    name_match = re.search(r'\*\s*([A-Z][A-Za-z0-9\s\&\'\-\.]+?)\s*(?:<table|Sales\s+campaign)', block)
-                
-                if not name_match:
-                    continue
-                
-                brand_name = clean_text(name_match.group(1))
-                
-                # Extract categories (Men's RTW, Women's RTW, etc.)
-                category_pattern = r'((?:Women\'s|Men\'s|M\'s/W\'s|M\'s|W\'s)\s+(?:RTW|Acc\.|Accessories)[^<\|]*)'
-                category_matches = re.findall(category_pattern, block)
-                categories = ', '.join([clean_text(cat) for cat in category_matches]) if category_matches else "N/A"
-                
-                # Extract sales campaign dates
-                sales_pattern = r'Sales\s+campaign\s+\w+\s+from\s+([A-Z][a-z]+\.?\s+[A-Z][a-z]+\s+\d{1,2}\s+\d{4})\s+to\s+([A-Z][a-z]+\.?\s+[A-Z][a-z]+\s+\d{1,2}\s+\d{4})'
-                sales_match = re.search(sales_pattern, block)
-                
-                sales_start = "N/A"
-                sales_end = "N/A"
-                
-                if sales_match:
-                    sales_start = self.parse_date(sales_match.group(1))
-                    sales_end = self.parse_date(sales_match.group(2))
-                
-                # Extract showroom locations (multiple possible)
-                # Pattern: CITY name Date - Date Address
-                location_pattern = r'([A-Z]{2,}(?:\s+[A-Z]+)?)\s+(?:[A-Z][a-z]+\s+\d{1,2}|from)'
-                location_matches = re.findall(location_pattern, block)
-                
-                # Get primary city
-                cities = []
-                for loc in location_matches:
-                    if loc in ['PARIS', 'MILAN', 'MILANO', 'NEW YORK', 'LONDON', 'FLORENCE', 
-                              'FIRENZE', 'TOKYO', 'SHANGHAI', 'BERLIN', 'DÜSSELDORF', 'MUNICH']:
-                        cities.append(loc.title())
-                
-                # Normalize city names
-                city_map = {'Milano': 'Milan', 'Firenze': 'Florence'}
-                cities = [city_map.get(c, c) for c in cities]
-                
-                primary_city = cities[0] if cities else "N/A"
-                all_cities = ', '.join(list(set([c for c in cities if c]))) if cities else "N/A"
-                
-                # Extract address
-                address_patterns = [
-                    r'((?:via|Via|Rue|rue|Viale|Corso)\s+[A-Za-z\s\.\,]{5,80}?\d+[^\|<\n]{0,50}?(?:\d{5}|Milan|Paris|Florence))',
-                    r'(\d+\s+[A-Z][a-z]+\s+(?:Street|Avenue|Road|St|Ave)[^\|<\n]{0,50})',
-                ]
-                
-                address = "N/A"
-                for pattern in address_patterns:
-                    addr_match = re.search(pattern, block)
-                    if addr_match:
-                        address = clean_text(addr_match.group(1))[:200]
-                        break
-                
-                # Extract phone
-                phone_pattern = r'(?:P\s*:|Mobile:)\s*(\+?[\d\s\(\)\-]{10,})'
-                phone_match = re.search(phone_pattern, block)
-                phone = clean_text(phone_match.group(1)) if phone_match else "N/A"
-                
-                # Extract email
-                email_pattern = r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
-                email_match = re.search(email_pattern, block)
-                email = clean_text(email_match.group(1)) if email_match else "N/A"
-                
-                # Extract Instagram
-                instagram_pattern = r'instagram\.com/([a-zA-Z0-9_\.]+)'
-                insta_match = re.search(instagram_pattern, block.lower())
-                instagram = f"@{insta_match.group(1)}" if insta_match else "N/A"
-                
-                # Extract Facebook
-                facebook_pattern = r'facebook\.com/([a-zA-Z0-9_\.]+)'
-                fb_match = re.search(facebook_pattern, block.lower())
-                facebook = f"facebook.com/{fb_match.group(1)}" if fb_match else "N/A"
-                
-                # Extract description (brand description text)
-                desc_pattern = r'</table>\s*([A-Z][^<]{100,800}?)\s*(?:\||<)'
-                desc_match = re.search(desc_pattern, block)
-                description = clean_text(desc_match.group(1))[:500] if desc_match else "N/A"
-                
-                # Determine country and region
-                country = self.get_country_from_city(primary_city)
-                region = REGION_MAPPING.get(country, "Other")
-                
-                # Filter by region
-                if region not in TARGET_REGIONS:
-                    print(f"Skipping {brand_name} - Region {region} not in targets")
-                    continue
-                
-                showroom = {
-                    'brand_name': brand_name,
-                    'categories': categories,
-                    'sales_start': sales_start,
-                    'sales_end': sales_end,
-                    'primary_city': primary_city,
-                    'all_cities': all_cities,
-                    'country': country,
-                    'region': region,
-                    'address': address,
-                    'phone': phone,
-                    'email': email,
-                    'instagram': instagram,
-                    'facebook': facebook,
-                    'description': description,
-                    'source_url': source_url
-                }
-                
-                showrooms.append(showroom)
-                print(f"Extracted: {brand_name} ({categories}) in {primary_city}")
-                
-            except Exception as e:
-                print(f"Error parsing showroom block: {str(e)}")
-                continue
-        
-        return showrooms
+    def parse_showroom_text(self, text: str, source_url: str):
+        """Parse one showroom record from text content extracted from the DOM"""
+        try:
+            s = ' '.join(text.split())
+            # Remove noisy leading sales campaign prefaces that can pollute name extraction
+            s = re.sub(r'^Sales\s+campaign[^A-Z]{0,200}', '', s, flags=re.IGNORECASE)
+            # Normalize common unicode apostrophes/quotes
+            s = s.replace('’', "'").replace('“', '"').replace('”', '"')
+
+            # Brand name: text before '* Mini Website' or before categories/date cues
+            name = None
+            m = re.search(r'^([^\*\[]+?)(?:\s*\*\s*Mini\s*Website|\s*\[|\s+Women\'s|\s+Men\'s|\s+M\'s/W\'s|\s+Sales\s+campaign|\s+from\s+[A-Z])', s)
+            if m:
+                name = clean_text(m.group(1))
+            if not name:
+                # Fallback: first capitalized chunk
+                m2 = re.search(r'^([A-Z][A-Za-z0-9\s\&\'\-\.]{3,80})', s)
+                name = clean_text(m2.group(1)) if m2 else ''
+
+            # Guardrails and corrective fallback for brand name
+            bad_prefix = name and name.lower().startswith('sales campaign')
+            seasonish = name and re.match(r'^(ss|fw)\d{2}', name, re.IGNORECASE)
+            dateish = name and re.search(r'\bfrom\s+[A-Z][a-z]+\s+\d{1,2}', name)
+            if bad_prefix or seasonish or dateish:
+                # Try extracting a trailing proper-case brand name from the end of the text
+                tail = re.findall(r'([A-Z][A-Za-z0-9&\'\.\-]+(?:\s+[A-Z][A-Za-z0-9&\'\.\-]+){0,4})\s*$', s)
+                if tail:
+                    name = clean_text(tail[-1])
+                    bad_prefix = seasonish = dateish = False
+            # If still malformed, drop
+            if (name and (name.lower().startswith('sales campaign') or re.match(r'^(ss|fw)\d{2}', name, re.IGNORECASE) or re.search(r'\bfrom\s+[A-Z][a-z]+\s+\d{1,2}', name))):
+                return None
+            if name and len(name) > 120:
+                return None
+
+            # Categories
+            cats = re.findall(r'(Women\'s|Men\'s|M\'s/W\'s)\s+(RTW|Acc\.|Accessories)', s)
+            categories = ', '.join([f"{c[0]} {c[1]}" for c in cats]) if cats else 'N/A'
+
+            # Sales campaign dates
+            sales_start = 'N/A'
+            sales_end = 'N/A'
+            dm = re.search(r'Sales\s+campaign\s+\w+\s+from\s+([A-Z][a-z]+\.?\s+\d{1,2}\s+\d{4})\s+to\s+([A-Z][a-z]+\.?\s+\d{1,2}\s+\d{4})', s)
+            if dm:
+                sales_start = self.parse_date(dm.group(1))
+                sales_end = self.parse_date(dm.group(2))
+
+            # City detection
+            known_cities = ['Paris','Milan','Milano','London','New York','Florence','Firenze','Tokyo','Shanghai','Berlin','Düsseldorf','Munich','Seoul','Hong Kong','Copenhagen']
+            primary_city = 'N/A'
+            for c in known_cities:
+                if c in s:
+                    primary_city = c
+                    break
+            city_map = {'Milano': 'Milan', 'Firenze': 'Florence'}
+            primary_city = city_map.get(primary_city, primary_city)
+
+            # Contacts
+            email_match = re.search(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', s)
+            email = email_match.group(0) if email_match else 'N/A'
+            phone_m = re.search(r'(?:P\s*:|Mobile:)?\s*(\+?[\d\s\(\)\-]{10,})', s)
+            phone = clean_text(phone_m.group(1)) if phone_m else 'N/A'
+            insta_m = re.search(r'instagram\.com/([A-Za-z0-9_\.]+)|@([A-Za-z0-9_\.]+)', s, re.IGNORECASE)
+            instagram = f"@{insta_m.group(1) or insta_m.group(2)}" if insta_m else 'N/A'
+            fb_m = re.search(r'facebook\.com/([A-Za-z0-9_\.]+)', s, re.IGNORECASE)
+            facebook = f"facebook.com/{fb_m.group(1)}" if fb_m else 'N/A'
+
+            # Address (best-effort)
+            addr_m = re.search(r'((?:Via|Rue|Viale|Corso|Street|Avenue|Road)\s+[^\|]{5,120})', s)
+            address = clean_text(addr_m.group(1))[:200] if addr_m else 'N/A'
+
+            # Country / Region
+            country = self.get_country_from_city(primary_city)
+            region = REGION_MAPPING.get(country, 'Other')
+            if region not in TARGET_REGIONS:
+                return None
+
+            return {
+                'brand_name': name.strip(),
+                'categories': categories,
+                'sales_start': sales_start,
+                'sales_end': sales_end,
+                'primary_city': primary_city if primary_city else 'N/A',
+                'all_cities': primary_city if primary_city else 'N/A',
+                'country': country,
+                'region': region,
+                'address': address,
+                'phone': phone,
+                'email': email,
+                'instagram': instagram,
+                'facebook': facebook,
+                'description': '',
+                'source_url': source_url
+            }
+        except Exception as e:
+            print(f"  Warning: parse error: {e}")
+            return None
     
     def parse_date(self, date_str):
         """Parse date string to YYYY-MM-DD format"""
@@ -250,11 +260,21 @@ class DesignerShowroomsScraper(BaseScraper):
             all_showrooms.extend(showrooms)
             time.sleep(self.delay)
         
+        # Dedupe by brand_name + source_url
+        deduped = []
+        seen = set()
+        for r in all_showrooms:
+            key = (r.get('brand_name','').strip().lower(), r.get('source_url','').strip().lower())
+            if not r.get('brand_name') or key in seen:
+                continue
+            seen.add(key)
+            deduped.append(r)
+
         # Save results
-        self.save_showrooms(all_showrooms)
-        
-        print(f"Designer showrooms scraping complete. Total: {len(all_showrooms)}")
-        
+        self.save_showrooms(deduped)
+
+        print(f"Designer showrooms scraping complete. Total: {len(deduped)}")
+
         self.stop_browser()
 
 
