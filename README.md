@@ -82,6 +82,29 @@ cd C:\Users\Vihaan\Desktop\references\fashion-scraper
 .\.venv\Scripts\python.exe -m utils.extract_brands
 ```
 
+### 3. Email Enrichment (Optional - Requires Apollo.io API)
+
+**Enrich leads with professional email addresses:**
+
+```powershell
+# 1. Get Apollo.io API key (free tier: 50 credits/month)
+#    Sign up at: https://app.apollo.io/sign-up
+#    Get API key: https://app.apollo.io/#/settings/integrations/api
+
+# 2. Create .env file with your API key
+cp .env.example .env
+# Edit .env and add: APOLLO_API_KEY=your_key_here
+
+# 3. Run email enrichment
+python email_enricher.py
+
+# Output: data/enriched/master_leads_enriched.csv
+```
+
+**💡 See [EMAIL_ENRICHMENT_GUIDE.md](EMAIL_ENRICHMENT_GUIDE.md) for detailed setup, troubleshooting, and best practices.**
+
+```
+
 ---
 
 ## 📁 Data Schema
