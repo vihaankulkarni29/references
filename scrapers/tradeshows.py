@@ -37,7 +37,11 @@ class TradeshowsScraper(BaseScraper):
         
         try:
             page = self.new_page()
-            page.goto(url, wait_until='networkidle', timeout=60000)
+            try:
+                page.goto(url, wait_until='networkidle', timeout=90000)
+            except Exception:
+                # Fallback to a lighter wait condition
+                page.goto(url, wait_until='load', timeout=90000)
             
             # Handle cookie consent if present
             self.handle_cookie_consent(page)
@@ -118,6 +122,145 @@ class TradeshowsScraper(BaseScraper):
             import traceback
             traceback.print_exc()
             return []
+
+    # ----------------
+    # Date enrichment helpers
+    # ----------------
+    def _standardize_months(self, text: str) -> str:
+        """Standardize abbreviated month names (e.g., Sept. -> September)."""
+        repl = {
+            'Jan.': 'January', 'Feb.': 'February', 'Mar.': 'March', 'Apr.': 'April',
+            'Jun.': 'June', 'Jul.': 'July', 'Aug.': 'August', 'Sep.': 'September',
+            'Sept.': 'September', 'Oct.': 'October', 'Nov.': 'November', 'Dec.': 'December'
+        }
+        for k, v in repl.items():
+            text = text.replace(k, v)
+        return text
+
+    def _find_date_range_in_text(self, text: str):
+        """Find a date range in free text. Returns (start_iso, end_iso) or (None, None)."""
+        if not text:
+            return None, None
+        s = ' '.join(text.split())
+        s = self._standardize_months(s)
+
+        # Common patterns
+        patterns = [
+            # September 20-24, 2025
+            r'([A-Z][a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\s*[–\-to]{1,3}\s*(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})',
+            # 20-24 September 2025
+            r'(\d{1,2})(?:st|nd|rd|th)?\s*[–\-to]{1,3}\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Z][a-z]+)\s+(\d{4})',
+            # September 20 2025 to September 24 2025
+            r'([A-Z][a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(\d{4})\s+(?:to|–|-)\s+([A-Z][a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(\d{4})',
+            # 2025-09-20 to 2025-09-24
+            r'(\d{4})-(\d{2})-(\d{2})\s+(?:to|–|-)\s+(\d{4})-(\d{2})-(\d{2})',
+            # 20 September - 24 September 2025
+            r'(\d{1,2})\s+([A-Z][a-z]+)\s*[–\-to]{1,3}\s*(\d{1,2})\s+([A-Z][a-z]+)\s+(\d{4})',
+        ]
+
+        def month_to_num(m: str) -> int:
+            return datetime.strptime(m, '%B').month
+
+        for i, pat in enumerate(patterns):
+            m = re.search(pat, s)
+            if not m:
+                continue
+            try:
+                if i == 0:
+                    # Month D1-D2, YYYY
+                    month, d1, d2, year = m.group(1), int(m.group(2)), int(m.group(3)), int(m.group(4))
+                    start = datetime(year, month_to_num(month), d1).strftime('%Y-%m-%d')
+                    end = datetime(year, month_to_num(month), d2).strftime('%Y-%m-%d')
+                    return start, end
+                elif i == 1:
+                    # D1-D2 Month YYYY
+                    d1, d2, month, year = int(m.group(1)), int(m.group(2)), m.group(3), int(m.group(4))
+                    start = datetime(year, month_to_num(month), d1).strftime('%Y-%m-%d')
+                    end = datetime(year, month_to_num(month), d2).strftime('%Y-%m-%d')
+                    return start, end
+                elif i == 2:
+                    # Month D1 YYYY to Month D2 YYYY
+                    m1, d1, y1, m2, d2, y2 = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4), int(m.group(5)), int(m.group(6))
+                    start = datetime(y1, month_to_num(m1), d1).strftime('%Y-%m-%d')
+                    end = datetime(y2, month_to_num(m2), d2).strftime('%Y-%m-%d')
+                    return start, end
+                elif i == 3:
+                    # ISO to ISO
+                    y1, mo1, d1, y2, mo2, d2 = int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6))
+                    start = datetime(y1, mo1, d1).strftime('%Y-%m-%d')
+                    end = datetime(y2, mo2, d2).strftime('%Y-%m-%d')
+                    return start, end
+                elif i == 4:
+                    # D1 Month - D2 Month YYYY
+                    d1, m1, d2, m2, y = int(m.group(1)), m.group(2), int(m.group(3)), m.group(4), int(m.group(5))
+                    start = datetime(y, month_to_num(m1), d1).strftime('%Y-%m-%d')
+                    end = datetime(y, month_to_num(m2), d2).strftime('%Y-%m-%d')
+                    return start, end
+            except Exception:
+                continue
+        return None, None
+
+    def extract_dates_from_url(self, url: str, page=None):
+        """Load a page and attempt to extract a date range from its content."""
+        if not url:
+            return None, None
+        own_page = False
+        try:
+            if page is None:
+                page = self.new_page()
+                own_page = True
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=15000)
+            except Exception:
+                page.goto(url, wait_until='load', timeout=15000)
+            self.handle_cookie_consent(page)
+            page.wait_for_timeout(500)
+            body_text = ''
+            try:
+                body_text = page.inner_text('body')
+            except Exception:
+                body_text = ''
+            return self._find_date_range_in_text(body_text)
+        except Exception:
+            return None, None
+        finally:
+            if own_page:
+                try:
+                    page.close()
+                except Exception:
+                    pass
+
+    def enrich_tradeshows_with_dates(self, tradeshows):
+        """For records lacking dates, visit mini website and parse date ranges."""
+        if not tradeshows:
+            return 0
+        updated = 0
+        # Reuse a single page for efficiency
+        page = None
+        try:
+            page = self.new_page()
+            for ts in tradeshows:
+                sd = ts.get('start_date', 'N/A')
+                ed = ts.get('end_date', 'N/A')
+                if sd != 'N/A' and ed != 'N/A':
+                    continue
+                # Try mini website first, then source_url
+                for candidate in [ts.get('mini_website_url'), ts.get('source_url')]:
+                    if not candidate:
+                        continue
+                    start, end = self.extract_dates_from_url(candidate, page=page)
+                    if start and end:
+                        ts['start_date'] = start
+                        ts['end_date'] = end
+                        updated += 1
+                        break
+        finally:
+            try:
+                if page:
+                    page.close()
+            except Exception:
+                pass
+        return updated
     
     def parse_tradeshow_text(self, text, source_url):
         """Parse tradeshow details from text content"""
@@ -146,13 +289,12 @@ class TradeshowsScraper(BaseScraper):
         name = re.sub(r'\s*\*?\s*Mini\s+Website\s*$', '', name, flags=re.IGNORECASE)
         name = re.sub(r'\s*[\*\[\]]\s*$', '', name).strip()
         
-        # Extract dates
-        date_match = re.search(r'from\s+(?:[A-Z][a-z]+\.?\s+)?([A-Z][a-z]+)\s+(\d{1,2})\s+(\d{4})\s+to\s+(?:[A-Z][a-z]+\.?\s+)?([A-Z][a-z]+)\s+(\d{1,2})\s+(\d{4})', text)
+        # Extract dates (robust patterns)
         start_date = "N/A"
         end_date = "N/A"
-        if date_match:
-            start_date = self.parse_date(f"{date_match.group(1)} {date_match.group(2)} {date_match.group(3)}")
-            end_date = self.parse_date(f"{date_match.group(4)} {date_match.group(5)} {date_match.group(6)}")
+        s, e = self._find_date_range_in_text(text)
+        if s and e:
+            start_date, end_date = s, e
         
         # Extract city
         city = "N/A"
@@ -184,10 +326,7 @@ class TradeshowsScraper(BaseScraper):
             'source_url': source_url
         }
     
-    def get_country_from_city(self, city):
-        # Placeholder body; the actual implementation is defined later in the file.
-        # This stub will be replaced by the proper mapping method below if needed.
-        return 'Unknown'
+    
     
     def parse_date(self, date_str):
         """Parse date string to YYYY-MM-DD format"""
@@ -259,6 +398,11 @@ class TradeshowsScraper(BaseScraper):
             all_tradeshows.extend(tradeshows)
             time.sleep(self.delay)
         
+        # Enrich with dates from mini websites
+        print("\nAttempting to enrich tradeshow dates from mini websites...")
+        updated_count = self.enrich_tradeshows_with_dates(all_tradeshows)
+        print(f"Updated dates for {updated_count} tradeshows")
+
         # Save results
         self.save_tradeshows(all_tradeshows)
         
