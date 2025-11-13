@@ -220,7 +220,29 @@ class TradeshowsScraper(BaseScraper):
                 body_text = page.inner_text('body')
             except Exception:
                 body_text = ''
-            return self._find_date_range_in_text(body_text)
+            start, end = self._find_date_range_in_text(body_text)
+            if start and end:
+                return start, end
+
+            # If not found on this page, try following an external "Official Website" link
+            external = self._find_external_site_url(page)
+            if external:
+                try:
+                    try:
+                        page.goto(external, wait_until='domcontentloaded', timeout=10000)
+                    except Exception:
+                        page.goto(external, wait_until='load', timeout=10000)
+                    self.handle_cookie_consent(page)
+                    page.wait_for_timeout(500)
+                    ext_text = ''
+                    try:
+                        ext_text = page.inner_text('body')
+                    except Exception:
+                        ext_text = ''
+                    return self._find_date_range_in_text(ext_text)
+                except Exception:
+                    return None, None
+            return None, None
         except Exception:
             return None, None
         finally:
@@ -239,7 +261,7 @@ class TradeshowsScraper(BaseScraper):
         page = None
         try:
             page = self.new_page()
-            for ts in tradeshows:
+            for idx, ts in enumerate(tradeshows, 1):
                 sd = ts.get('start_date', 'N/A')
                 ed = ts.get('end_date', 'N/A')
                 if sd != 'N/A' and ed != 'N/A':
@@ -254,6 +276,8 @@ class TradeshowsScraper(BaseScraper):
                         ts['end_date'] = end
                         updated += 1
                         break
+                # Soft cap to avoid long runs; adjust if needed
+                page.wait_for_timeout(200)
         finally:
             try:
                 if page:
@@ -261,6 +285,44 @@ class TradeshowsScraper(BaseScraper):
             except Exception:
                 pass
         return updated
+
+    def _find_external_site_url(self, page):
+        """Find an external site link on the current page (e.g., Official Website)."""
+        try:
+            links = page.locator('a').all()
+            for link in links:
+                try:
+                    href = link.get_attribute('href') or ''
+                    text = (link.inner_text() or '').strip().lower()
+                    if not href:
+                        continue
+                    # Normalize protocol-less links
+                    if href.startswith('//'):
+                        href = 'https:' + href
+                    # Absolute only
+                    if not (href.startswith('http://') or href.startswith('https://')):
+                        continue
+                    # Skip internal modemonline links
+                    if 'modemonline.com' in href:
+                        continue
+                    # Prefer links with indicative text
+                    if any(k in text for k in ['official', 'website', 'site']):
+                        return href
+                except Exception:
+                    continue
+            # Fallback: first external absolute link
+            for link in links:
+                try:
+                    href = link.get_attribute('href') or ''
+                    if href.startswith('//'):
+                        href = 'https:' + href
+                    if href.startswith('http') and 'modemonline.com' not in href:
+                        return href
+                except Exception:
+                    continue
+        except Exception:
+            return None
+        return None
     
     def parse_tradeshow_text(self, text, source_url):
         """Parse tradeshow details from text content"""
