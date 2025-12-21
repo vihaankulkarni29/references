@@ -1,0 +1,7 @@
+playwright
+beautifulsoup4
+pandas
+duckduckgo-search>=4.0.0
+requests
+fake-useragent
+playwright-stealth
