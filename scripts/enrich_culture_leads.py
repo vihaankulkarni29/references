@@ -36,11 +36,30 @@ async def extract_data(page, url):
             if not any(x in e.lower() for x in ['.png', '.jpg', 'example.com', 'sentry.io']):
                 data["Emails"].add(e.lower())
 
-        # 2. Phones (UAE Focus)
-        phones = re.findall(r'(?:\+971|00971|0)?\s?(?:50|51|52|55|56|58|2|3|4|6|7|9|800)\s?\d{3}\s?\d{4,5}', content)
-        for p in phones:
-            data["Phones"].add(p.strip())
+        # 2. Phones (Strict UAE Validation)
+        # Match potential phone patterns (+971..., 050..., 04...)
+        raw_phones = re.findall(r'(?:\+?971|00971|0)?[- .]?\d{2,3}[- .]?\d{3}[- .]?\d{4,}', content)
+        for p in raw_phones:
+            # Clean: Remove non-digits
+            clean = re.sub(r'\D', '', p)
             
+            # Normalize to UAE format
+            if clean.startswith('971'):
+                clean = '0' + clean[3:]
+            if clean.startswith('00971'):
+                clean = '0' + clean[5:]
+            
+            # Validate Length & Prefix
+            # Mobile: 05x xxxxxxx (10 digits)
+            # Landline: 0x xxxxxxx (9 digits)
+            # Toll-Free: 800 xxxxx (variable)
+            if len(clean) == 10 and clean.startswith(('050', '052', '054', '055', '056', '058')):
+                data["Phones"].add(f"+971 {clean[1:3]} {clean[3:6]} {clean[6:]}") # Format: +971 50 123 4567
+            elif len(clean) == 9 and clean.startswith(('02', '03', '04', '06', '07', '09')):
+                data["Phones"].add(f"+971 {clean[1]} {clean[2:5]} {clean[5:]}")   # Format: +971 4 123 4567
+            elif clean.startswith('800') and len(clean) >= 7:
+                data["Phones"].add(clean)
+
         # 3. Instagram Link
         # Look for a tag with href containing instagram.com
         ig_links = page.locator("a[href*='instagram.com']")
