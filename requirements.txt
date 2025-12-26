@@ -5,3 +5,4 @@ duckduckgo-search>=4.0.0
 requests
 fake-useragent
 playwright-stealth
+googlesearch-python
