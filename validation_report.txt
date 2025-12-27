@@ -1,0 +1,52 @@
+﻿============================================================
+SOLE DXB LEADS - DATA QUALITY REPORT
+============================================================
+
+TOTAL RECORDS: 113
+Expected: 113 companies
+
+DATA COMPLETENESS:
+  Website Found:     85 / 113 ( 75.2%)
+  Instagram Found:   92 / 113 ( 81.4%)
+  Phone Found:       24 / 113 ( 21.2%)
+  Location Found:    65 / 113 ( 57.5%)
+
+PHONE NUMBER QUALITY:
+  Total with Phones: 24
+  Valid +971 Format: 23
+
+  Sample Phones:
+    - Mamafri: 800315731, +971 58 501 4774, +971 4 330 0012
+    - Mama Fri: +971 52 027 4185
+    - One Life: +971 4 513 4727, +971 4 456 9859
+    - Soul Sante: +971 50 783 7685
+    - Humantra: +971 3 320 3125
+
+LOCATION INSIGHTS:
+  Physical Locations: 65
+  Online/Remote:      48
+
+  Sample Locations:
+    - Leaf Apparel: 2gis.aeOnly include results for this siteRedo search without this site...
+    - No Borders: msf-me.orgOnly include results for this siteRedo search without this s...
+    - Fujifilm Middle East: fujifilm.comOnly include results for this siteRedo search without this...
+
+MISSING DATA:
+  Companies with NO contact info: 20
+    - Miss LilyΓÇÖs
+    - Sole DXB Team
+    - OFA
+    - 28Natelier
+    - Babw├¬
+
+COMPLETE PROFILES (All 4 fields):
+  Total: 18 companies
+    - Mamafri
+    - Mama Fri
+    - One Life
+    - Champion
+    - The Maine Oyster Bar
+
+============================================================
+VALIDATION COMPLETE
+============================================================
